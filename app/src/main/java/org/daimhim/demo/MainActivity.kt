@@ -1,12 +1,12 @@
 package org.daimhim.demo
 
-import android.app.Activity
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
 import org.daimhim.widget.ic.IntervalCalendar
 import org.daimhim.widget.ic.IntervalCalendarController
 import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
     private lateinit var ic: IntervalCalendar
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +24,7 @@ class MainActivity : Activity() {
         config.max = 3
         config.isCancel = true
         ic.setLifecycle(this, config)
+//        ic.addViewHolderFactory()
     }
 
 

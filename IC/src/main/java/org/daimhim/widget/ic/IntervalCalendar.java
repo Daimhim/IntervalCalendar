@@ -3,7 +3,6 @@ package org.daimhim.widget.ic;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
-import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseArray;
@@ -14,28 +13,24 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleOwner;
-import androidx.paging.Pager;
-import androidx.paging.PagingConfig;
 import androidx.paging.PagingDataAdapter;
-import androidx.paging.PagingSource;
 import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import kotlin.Unit;
-import kotlin.coroutines.Continuation;
-import kotlin.coroutines.CoroutineContext;
-import kotlin.jvm.functions.Function0;
-import kotlinx.coroutines.flow.FlowCollector;
+
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.SoftReference;
 import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.daimhim.widget.ic.IntervalCalendarController.*;
@@ -66,64 +61,31 @@ public class IntervalCalendar extends FrameLayout {
     public static final int UNSATISFACTORY_STATE = 4;
     private SparseArray<EveryDayViewHolderFactory> factorySparseArray;
 
+    // 可以设置默认选中时间
+    // 可以设置选中时间的区间
+    // 是否可以取消选中
+    // 绘制开始、绘制结束、绘制选中、绘制未选中、绘制不可选
+    private RecyclerView recyclerView;
     private IntervalCalendarAdapter intervalCalendarAdapter;
 
+    private IntervalCalendarController intervalCalendarController;
 
-
-    public IntervalCalendar(Context context) {
+    public IntervalCalendar(@NonNull @NotNull Context context) {
         this(context, null);
     }
 
-    public IntervalCalendar(Context context, AttributeSet attrs) {
+    public IntervalCalendar(@NonNull @NotNull Context context,
+                            @Nullable @org.jetbrains.annotations.Nullable AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public IntervalCalendar(Context context, AttributeSet attrs, int defStyle) {
-        super(context, attrs, defStyle);
+    public IntervalCalendar(@NonNull @NotNull Context context,
+                            @Nullable @org.jetbrains.annotations.Nullable AttributeSet attrs,
+                            int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
         initView(context);
-        initData();
     }
 
-    private void initData() {
-        IntervalCalendarProvider.EveryDaySource everyDaySource = new IntervalCalendarProvider.EveryDaySource();
-        Pager pager = new Pager(
-                new PagingConfig(6),
-                String.format(
-                        "%s/%s", instance.get(Calendar.YEAR),
-                        instance.get(Calendar.MONTH) + 1
-                ),
-                new Function0<PagingSource>() {
-                    @Override
-                    public PagingSource invoke() {
-                        return new IntervalCalendarProvider.EveryDaySource();
-                    }
-                }
-        );
-
-        Calendar instance = Calendar.getInstance();
-        // 重置 计算日历最小时间
-        instance.timeInMillis = config.timeCenter
-        instance.add(Calendar.MONTH, -config.min)
-        config.minTime = instance.timeInMillis
-
-        // 重置计算日历最大时间
-        instance.timeInMillis = config.timeCenter
-        instance.add(Calendar.MONTH, config.max)
-        config.maxTime = instance.timeInMillis
-
-        // 重置 干其他事
-        instance.timeInMillis = config.timeCenter
-        if (config.startTime < 0 && !config.isCancel) {
-            config.startTime = config.timeCenter
-        }
-        if (config.finishTime < 0 && !config.isCancel) {
-            instance.add(Calendar.DAY_OF_MONTH, 1)
-            config.finishTime = instance.timeInMillis
-        }
-
-        // 重置 干其他事
-        instance.timeInMillis = config.timeCenter
-    }
 
     private void initView(Context context) {
         factorySparseArray = new SparseArray<>();
@@ -132,21 +94,29 @@ public class IntervalCalendar extends FrameLayout {
         factorySparseArray.put(TITLE_ITEM_TYPE, new EveryDayViewHolderFactoryImpl(TITLE_ITEM_TYPE));
 
         View inflate = inflate(context, R.layout.interval_calendar_layout, null);
-        // 可以设置默认选中时间
-        // 可以设置选中时间的区间
-        // 是否可以取消选中
-        // 绘制开始、绘制结束、绘制选中、绘制未选中、绘制不可选
-        RecyclerView recyclerView = inflate.findViewById(R.id.recyclerView);
+        recyclerView = inflate.findViewById(R.id.recyclerView);
         addView(inflate);
 
         intervalCalendarAdapter = new IntervalCalendarAdapter(factorySparseArray);
         recyclerView.setAdapter(intervalCalendarAdapter);
+        DividerItemDecoration decor = new DividerItemDecoration(context, GridLayoutManager.VERTICAL);
+        decor.setDrawable(ContextCompat.getDrawable(context,R.drawable.inset_recyclerview_divider));
+        recyclerView.addItemDecoration(decor);
+        intervalCalendarController = new IntervalCalendarController(intervalCalendarAdapter);
+        Log.i("IntervalCalendar tag ",context.getClass().getName());
     }
 
     @SuppressLint("NotifyDataSetChanged")
     public void addViewHolderFactory(int viewType, EveryDayViewHolderFactory factory) {
         factorySparseArray.put(viewType, factory);
         intervalCalendarAdapter.notifyDataSetChanged();
+    }
+
+    public static class EveryDay {
+        public String text;
+        protected int viewType;
+        public long millis = -1;
+        public int selectedState = 0;
     }
 
     public static class IntervalCalendarAdapter
@@ -157,15 +127,15 @@ public class IntervalCalendar extends FrameLayout {
         public IntervalCalendarAdapter(SparseArray<EveryDayViewHolderFactory> factorySparseArray) {
             super(new DiffUtil.ItemCallback<EveryDay>() {
                 @Override
-                public boolean areItemsTheSame(@NonNull @NotNull EveryDay oldItem,
-                                               @NonNull @NotNull EveryDay newItem) {
-                    return oldItem.getMillis() == newItem.getMillis();
+                public boolean areItemsTheSame(@NonNull @NotNull IntervalCalendar.EveryDay oldItem,
+                                               @NonNull @NotNull IntervalCalendar.EveryDay newItem) {
+                    return oldItem.millis == newItem.millis;
                 }
 
                 @Override
-                public boolean areContentsTheSame(@NonNull @NotNull EveryDay oldItem,
-                                                  @NonNull @NotNull EveryDay newItem) {
-                    return isSameDayEx(oldItem.getMillis(), newItem.getMillis()) == 0;
+                public boolean areContentsTheSame(@NonNull @NotNull IntervalCalendar.EveryDay oldItem,
+                                                  @NonNull @NotNull IntervalCalendar.EveryDay newItem) {
+                    return isSameDayEx(oldItem.millis, newItem.millis) == 0;
                 }
 
             });
@@ -188,7 +158,7 @@ public class IntervalCalendar extends FrameLayout {
             if (item == null){
                 return PLACEHOLDER_ITEM_TYPE;
             }
-            return item.getViewType();
+            return item.viewType;
         }
         public EveryDay getItemDay(int position){
             return getItem(position);
@@ -204,7 +174,7 @@ public class IntervalCalendar extends FrameLayout {
                             public int getSpanSize(int position) {
                                 EveryDay item = getItem(position);
                                 if (item != null
-                                        && item.getViewType() == TITLE_ITEM_TYPE){
+                                        && item.viewType == TITLE_ITEM_TYPE){
                                     return 7;
                                 }
                                 return 1;
@@ -215,18 +185,21 @@ public class IntervalCalendar extends FrameLayout {
 
         @Override
         public void onBindViewHolder(
-                @NonNull @NotNull EveryDayViewHolder holder,
+                @NonNull @NotNull IntervalCalendar.IntervalCalendarAdapter.EveryDayViewHolder holder,
                 int position) {
             EveryDay item = getItem(position);
             if (item == null) {
                 return;
             }
+            Calendar instance = Calendar.getInstance();
+            instance.setTimeInMillis(item.millis);
+            item.selectedState = itemStatus(config,instance);
             holder.onBindData(item);
             holder.bindListener(holder.itemView);
         }
 
         @Override
-        public void onBindViewHolder(@NonNull @NotNull EveryDayViewHolder holder, int position, @NonNull @NotNull List<Object> payloads) {
+        public void onBindViewHolder(@NonNull @NotNull IntervalCalendar.IntervalCalendarAdapter.EveryDayViewHolder holder, int position, @NonNull @NotNull List<Object> payloads) {
             if (payloads.isEmpty()){
                 super.onBindViewHolder(holder, position, payloads);
             }else {
@@ -235,8 +208,8 @@ public class IntervalCalendar extends FrameLayout {
                     return;
                 }
                 Calendar instance = Calendar.getInstance();
-                instance.setTimeInMillis(item.getMillis());
-                item.setSelectedState(itemStatus(config,instance));
+                instance.setTimeInMillis(item.millis);
+                item.selectedState = itemStatus(config,instance);
                 holder.onBindData(item);
                 holder.bindListener(holder.itemView);
             }
@@ -266,17 +239,37 @@ public class IntervalCalendar extends FrameLayout {
                 notifyItemChanged(endPosition,0);
             }
         }
+        private final ExecutorService executorService = Executors.newCachedThreadPool();
         public void chooseStatusChange(Long startTime,Long endTime){
-            Integer startPosition = recursionBinarySearch(startTime);
-            Integer endPosition = recursionBinarySearch(endTime);
-            Log.i("chooseStatusChange",String.format("startPosition %s endPosition %s",
-                    startPosition,endPosition));
-            if (startPosition.compareTo(-1) > 0 && endPosition.compareTo(-1) > 0){
-                notifyItemRangeChanged(startPosition,endPosition-startPosition+1,0);
-            }else if (startPosition.compareTo(-1) > 0){
-                notifyItemChanged(startPosition,0);
-            }else if (endPosition.compareTo(-1) > 0){
-                notifyItemChanged(endPosition,0);
+            Future<Integer> startFuture = executorService.submit(new Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    return recursionBinarySearch(startTime);
+                }
+            });
+            Future<Integer> endFuture = executorService.submit(new Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    return recursionBinarySearch(endTime);
+                }
+            });
+
+            try {
+                Integer startPosition = startFuture.get();
+                Integer endPosition = endFuture.get();
+                Log.i("chooseStatusChange",String.format("startPosition %s endPosition %s",
+                        startPosition,endPosition));
+                if (startPosition.compareTo(-1) > 0 && endPosition.compareTo(-1) > 0){
+                    notifyItemRangeChanged(startPosition,endPosition-startPosition+1,0);
+                }else if (startPosition.compareTo(-1) > 0){
+                    notifyItemChanged(startPosition,0);
+                }else if (endPosition.compareTo(-1) > 0){
+                    notifyItemChanged(endPosition,0);
+                }
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
         private int recursionBinarySearch(long key){
@@ -298,7 +291,7 @@ public class IntervalCalendar extends FrameLayout {
                     if (item == null){
                         return -1;
                     }
-                     if (isSameDayEx(item.getMillis(), key) == 0){
+                     if (isSameDayEx(item.millis, key) == 0){
                          return low;
                     }else{
                          return -1;
@@ -310,7 +303,7 @@ public class IntervalCalendar extends FrameLayout {
                 if (item == null){
                     return -1;
                 }
-                sameDayEx = isSameDayEx(item.getMillis(), key);
+                sameDayEx = isSameDayEx(item.millis, key);
                 item = null;
                 if (sameDayEx > 0)
                     high = mid - 1;
@@ -343,13 +336,13 @@ public class IntervalCalendar extends FrameLayout {
          * @return true 有效的
          */
         private boolean effective(EveryDay item){
-            return item.getViewType() != TITLE_ITEM_TYPE
-                    && item.getSelectedState() != UNSATISFACTORY_STATE
-                    && item.getViewType() != PLACEHOLDER_ITEM_TYPE;
+            return item.viewType != TITLE_ITEM_TYPE
+                    && item.selectedState != UNSATISFACTORY_STATE
+                    && item.viewType != PLACEHOLDER_ITEM_TYPE;
         }
 
         public static class EveryDayViewHolder extends RecyclerView.ViewHolder {
-            private OnClickListener onClickListener;
+            private View.OnClickListener onClickListener;
             private SoftReference<OnItemClickListener> onItemClickListener;
 
             public EveryDayViewHolder(@NonNull @NotNull View itemView) {
@@ -358,8 +351,8 @@ public class IntervalCalendar extends FrameLayout {
 
             public void onBindData(EveryDay everyDay) {
                 TextView textView = (TextView) itemView;
-                textView.setText(everyDay.getText());
-                switch (everyDay.getSelectedState()) {
+                textView.setText(everyDay.text);
+                switch (everyDay.selectedState) {
                     case START_SELECT_STATE:
                         textView.setGravity(Gravity.CENTER);
                         textView.setBackgroundResource(R.drawable.red_round_box_left_4);
@@ -377,7 +370,7 @@ public class IntervalCalendar extends FrameLayout {
                         break;
                     case SELECT_STATE:
                         textView.setGravity(Gravity.CENTER);
-                        textView.setBackgroundColor(Color.TRANSPARENT);
+                        textView.setBackgroundColor(Color.parseColor("#FDEBEA"));
                         textView.setTextColor(Color.BLACK);
                         break;
                     case UNSATISFACTORY_STATE:
@@ -433,7 +426,7 @@ public class IntervalCalendar extends FrameLayout {
             @Override
             public void onBindData(EveryDay everyDay) {
                 TextView textView = (TextView) itemView;
-                textView.setText(everyDay.getText());
+                textView.setText(everyDay.text);
             }
         }
 
@@ -490,6 +483,16 @@ public class IntervalCalendar extends FrameLayout {
         }
     }
 
+    public void setLifecycle(LifecycleOwner lifecycle,Config config) {
+        Log.i("IntervalCalendar set","111111setLifecycle111" + lifecycle.toString());
+        intervalCalendarController.setLifecycle(lifecycle);
+        if (config == null){
+            config = new Config();
+        }
+        intervalCalendarController.setConfig(config);
+        intervalCalendarAdapter.config = config;
+        intervalCalendarController.init();
+    }
 
     public void setOnSelectTimeChangeListener(OnSelectTimeChangeListener onSelectTimeChangeListener) {
         intervalCalendarController.setOnSelectTimeChangeListener(onSelectTimeChangeListener);
@@ -498,11 +501,9 @@ public class IntervalCalendar extends FrameLayout {
     public long getStartTime(){
         return intervalCalendarController.getConfig().getStartTime();
     }
-
     public long getFinishTime(){
         return intervalCalendarController.getConfig().getFinishTime();
     }
-
 
     public interface OnSelectTimeChangeListener{
         void onTimeChange(long startTime,long endTime);
