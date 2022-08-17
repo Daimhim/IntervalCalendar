@@ -1,19 +1,19 @@
-package org.daimhim.widget.ic;
+package org.daimhim.widget.ic
 
-public class EveryDay {
-    public long millis = -1;
+class EveryDay {
     /**
      * Item 样式
      */
-    protected int viewType;
+    var viewType = 0
     /**
      * 是否可用
      */
-    protected boolean enable = true;
-    public int year;
-    public int moon;
-    public int day;
-    public int hour;
-    public int minute;
-    public int second;
+    var enable = true
+    var millis: Long = -1
+    var year = 0
+    var moon = 0
+    var day = 0
+    var hour = 0
+    var minute = 0
+    var second = 0
 }
