@@ -361,6 +361,19 @@ public class IntervalCalendar extends FrameLayout {
         intervalCalendarAdapter.setEveryDayFactory(everyDayFactory);
     }
 
+    public void clearSelect(){
+        long selectStartTime = intervalCalendarAdapter.getSelectStartTime();
+        long selectFinishTime = intervalCalendarAdapter.getSelectFinishTime();
+        intervalCalendarAdapter.setSelectStartTime(-1);
+        intervalCalendarAdapter.setSelectFinishTime(-1);
+        intervalCalendarAdapter.chooseStatusChange(selectStartTime,selectFinishTime);
+        if (onSelectTimeChangeListener != null){
+            onSelectTimeChangeListener.onTimeChange(
+                    intervalCalendarAdapter.getSelectStartTime(),
+                    intervalCalendarAdapter.getSelectFinishTime());
+        }
+    }
+
     public interface OnSelectTimeChangeListener {
         void onTimeChange(long startTime, long endTime);
         void chooseExceed();

@@ -86,7 +86,6 @@ class V2EveryDaySource(
         pager.put(key.millis,month)
 
         for (i in 0 until initializationNumber){
-
             backward.add(Calendar.MONTH,-1)
             month = getMonth(backward.timeInMillis)
             pager.put(backward.timeInMillis,month)
