@@ -3,10 +3,14 @@ package org.daimhim.widget.ic;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
+import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -62,6 +66,9 @@ public class IntervalCalendar extends FrameLayout {
      * 最大缓存页数
      */
     private int maxCacheLimit = -1;
+    /**
+     * 初始时数量
+     */
     private int initializationNumber = 5;
     private Lifecycle lifecycle;
     /**
@@ -69,6 +76,7 @@ public class IntervalCalendar extends FrameLayout {
      */
     private int maxInterval = -1;
 
+    private LinearLayout ll_weekend_layout;
 
     private OnSelectTimeChangeListener onSelectTimeChangeListener;
 
@@ -96,6 +104,7 @@ public class IntervalCalendar extends FrameLayout {
         // 是否可以取消选中
         // 绘制开始、绘制结束、绘制选中、绘制未选中、绘制不可选
         RecyclerView recyclerView = inflate.findViewById(R.id.recyclerView);
+        ll_weekend_layout = inflate.findViewById(R.id.ll_weekend_layout);
         intervalCalendarAdapter = new IntervalCalendarAdapter(60);
 
         GridLayoutManager layoutManager = (GridLayoutManager) recyclerView.getLayoutManager();
@@ -306,6 +315,37 @@ public class IntervalCalendar extends FrameLayout {
 
     public int getMaxInterval() {
         return maxInterval;
+    }
+
+    public void setWeekColor(@ColorInt int color){
+        int childCount = ll_weekend_layout.getChildCount();
+        TextView childAt = null;
+        for (int i = 0; i < childCount; i++) {
+            childAt = (TextView) ll_weekend_layout.getChildAt(i);
+            childAt.setTextColor(color);
+        }
+    }
+
+    public void setWeekSize(int unit, float size){
+        int childCount = ll_weekend_layout.getChildCount();
+        TextView childAt = null;
+        for (int i = 0; i < childCount; i++) {
+            childAt = (TextView) ll_weekend_layout.getChildAt(i);
+            childAt.setTextSize(unit, size);
+        }
+    }
+
+    public void setWeekSize(float size){
+        setWeekSize(TypedValue.COMPLEX_UNIT_SP, size);
+    }
+
+    public void setWeekPadding(int left, int top, int right, int bottom){
+        int childCount = ll_weekend_layout.getChildCount();
+        TextView childAt = null;
+        for (int i = 0; i < childCount; i++) {
+            childAt = (TextView) ll_weekend_layout.getChildAt(i);
+            childAt.setPadding(left, top, right, bottom);
+        }
     }
 
     public void setMaxInterval(int maxInterval) {
