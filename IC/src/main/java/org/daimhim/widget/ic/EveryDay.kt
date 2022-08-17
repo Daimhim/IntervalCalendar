@@ -13,6 +13,7 @@ class EveryDay {
     var enable = true
     @JvmField
     var millis: Long = -1
+    @JvmField
     var year = 0
     @JvmField
     var moon = 0
