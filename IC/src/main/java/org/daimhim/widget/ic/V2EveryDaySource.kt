@@ -1,5 +1,6 @@
 package org.daimhim.widget.ic
 
+import android.webkit.ValueCallback
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.coroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +54,8 @@ class V2EveryDaySource(
         }
     })
 
+    var initNotify : ValueCallback<Int>? = null
+
     private var loading = false
     fun bindAdapter(
         lifecycle: Lifecycle,
@@ -67,7 +70,9 @@ class V2EveryDaySource(
             .coroutineScope
             .launch(Dispatchers.Main) {
                 flow.collectLatest {
-                    pagingDataAdapter.submitList(it)
+                    pagingDataAdapter.submitList(it, Runnable {
+                        initNotify?.onReceiveValue(it.size)
+                    })
                     loading = false
                 }
             }

@@ -9,7 +9,7 @@
     <org.daimhim.widget.ic.IntervalCalendar
         android:id="@+id/ic_calendar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="400dp"
         android:background="#ffffff" />
     <Button
         android:text="clear"

@@ -411,7 +411,6 @@ public class IntervalCalendarAdapter
         this.selectFinishTime = selectFinishTime;
     }
 
-
     public static class EveryDayViewHolder extends RecyclerView.ViewHolder {
         private View.OnClickListener onClickListener;
         private SoftReference<OnItemClickListener> onItemClickListener;

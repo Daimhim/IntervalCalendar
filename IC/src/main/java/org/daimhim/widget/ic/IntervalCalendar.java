@@ -4,8 +4,8 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.LayoutInflater;
 import android.view.View;
+import android.webkit.ValueCallback;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -17,12 +17,10 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Calendar;
 import java.util.Objects;
 
 /**
@@ -79,6 +77,7 @@ public class IntervalCalendar extends FrameLayout {
     private LinearLayout ll_weekend_layout;
 
     private OnSelectTimeChangeListener onSelectTimeChangeListener;
+    private RecyclerView recyclerView;
 
     public IntervalCalendar(@NonNull @NotNull Context context) {
         this(context, null);
@@ -103,7 +102,7 @@ public class IntervalCalendar extends FrameLayout {
         // 可以设置选中时间的区间
         // 是否可以取消选中
         // 绘制开始、绘制结束、绘制选中、绘制未选中、绘制不可选
-        RecyclerView recyclerView = inflate.findViewById(R.id.recyclerView);
+        recyclerView = inflate.findViewById(R.id.recyclerView);
         ll_weekend_layout = inflate.findViewById(R.id.ll_weekend_layout);
         intervalCalendarAdapter = new IntervalCalendarAdapter(60);
 
@@ -144,14 +143,13 @@ public class IntervalCalendar extends FrameLayout {
                 intervalCalendarAdapter.advance(position);
             }
         });
-        recyclerView.post(new Runnable() {
-            @Override
-            public void run() {
-                int i = intervalCalendarAdapter.recursionBinarySearch(initialTime);
-                recyclerView.scrollToPosition(i);
-//                Log.i("V2EveryDaySource","scrollToPosition " + i);
-            }
-        });
+//        recyclerView.post(new Runnable() {
+//            @Override
+//            public void run() {
+//                int i = intervalCalendarAdapter.recursionBinarySearch(initialTime);
+//                recyclerView.scrollToPosition(i);
+//            }
+//        });
     }
 
     private void initListener() {
@@ -255,7 +253,21 @@ public class IntervalCalendar extends FrameLayout {
                 initialTime,
                 intervalCalendarAdapter
         );
+        v2EveryDaySource
+                .setInitNotify(new ValueCallback<Integer>() {
+                    @Override
+                    public void onReceiveValue(Integer value) {
+                        if (value == 0){
+                            return;
+                        }
+                        v2EveryDaySource.setInitNotify(null);
+                        int i = intervalCalendarAdapter.recursionBinarySearch(initialTime);
+                        recyclerView.scrollToPosition(i);
+                        Log.i("V2EveryDaySource","scrollToPosition "+ i);
+                    }
+                });
     }
+
 
     public void setOnSelectTimeChangeListener(OnSelectTimeChangeListener onSelectTimeChangeListener) {
         this.onSelectTimeChangeListener = onSelectTimeChangeListener;
@@ -355,6 +367,10 @@ public class IntervalCalendar extends FrameLayout {
     public void setLifecycle(Lifecycle lifecycle) {
         this.lifecycle = lifecycle;
         initData();
+    }
+
+    public IntervalCalendarAdapter getIntervalCalendarAdapter() {
+        return intervalCalendarAdapter;
     }
 
     public void setEveryDayFactory(IntervalCalendarAdapter.EveryDayFactory everyDayFactory) {
