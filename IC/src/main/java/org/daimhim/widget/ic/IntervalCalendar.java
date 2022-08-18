@@ -174,32 +174,29 @@ public class IntervalCalendar extends FrameLayout {
                     }
                     return;
                 }
-                //开始时间
-                int compare = Long.compare(itemDay.millis, selectStartTime);
-                // 当前点击小于开始
-                if (compare <= 0){
-                    //刷新
-                    intervalCalendarAdapter.setSelectStartTime(itemDay.millis);
-                    intervalCalendarAdapter.setSelectFinishTime(-1);
-                    intervalCalendarAdapter.chooseStatusChange(position,selectFinishTime < 0 ? selectStartTime : selectFinishTime);
-                    if (onSelectTimeChangeListener != null){
-                        onSelectTimeChangeListener.onTimeChange(
-                                intervalCalendarAdapter.getSelectStartTime(),
-                                intervalCalendarAdapter.getSelectFinishTime());
+
+                // 两个日期相差超过限定
+                if (maxInterval > 0 && maxInterval < (int) (Math.abs((itemDay.millis - selectStartTime)) / (1000*3600*24))){
+                    if (onSelectTimeChangeListener != null) {
+                        onSelectTimeChangeListener.chooseExceed();
                     }
                     return;
                 }
+                //当前选中时间与开始时间
+                int startCompare = Long.compare(itemDay.millis, selectStartTime);
+
                 // 从未选择结束时间
                 if (selectFinishTime < 0){
-                    //刷新
-                    if (maxInterval > 0 && maxInterval < (int) ((itemDay.millis - selectStartTime) / (1000*3600*24))){
-                        if (onSelectTimeChangeListener != null) {
-                            onSelectTimeChangeListener.chooseExceed();
-                        }
-                        return;
+                    //&& 当前点击小于开始
+                    if (startCompare < 0) {
+                        intervalCalendarAdapter.setSelectStartTime(itemDay.millis);
+                        intervalCalendarAdapter.setSelectFinishTime(selectStartTime);
+                        intervalCalendarAdapter.chooseStatusChange(itemDay.millis, selectStartTime);
+                    }else {
+                        //&& 当前点击大于或者等于开始
+                        intervalCalendarAdapter.setSelectFinishTime(itemDay.millis);
+                        intervalCalendarAdapter.chooseStatusChange(selectStartTime,position);
                     }
-                    intervalCalendarAdapter.setSelectFinishTime(itemDay.millis);
-                    intervalCalendarAdapter.chooseStatusChange(selectStartTime,itemDay.millis);
                     if (onSelectTimeChangeListener != null){
                         onSelectTimeChangeListener.onTimeChange(
                                 intervalCalendarAdapter.getSelectStartTime(),
@@ -207,14 +204,16 @@ public class IntervalCalendar extends FrameLayout {
                     }
                     return;
                 }
+
                 // 结束时间
-                compare = Long.compare(itemDay.millis, selectFinishTime);
-                // 当前点击大于结束
-                if (compare >= 0){
+                int endCompare = Long.compare(itemDay.millis, selectFinishTime);
+
+                // 再次点击已经选中的区间内取消选中
+                if (startCompare == 0 || endCompare == 0){
                     //刷新
-                    intervalCalendarAdapter.setSelectStartTime(itemDay.millis);
+                    intervalCalendarAdapter.setSelectStartTime(-1);
                     intervalCalendarAdapter.setSelectFinishTime(-1);
-                    intervalCalendarAdapter.chooseStatusChange(selectStartTime,position);
+                    intervalCalendarAdapter.chooseStatusChange(selectStartTime,selectFinishTime);
                     if (onSelectTimeChangeListener != null){
                         onSelectTimeChangeListener.onTimeChange(
                                 intervalCalendarAdapter.getSelectStartTime(),
