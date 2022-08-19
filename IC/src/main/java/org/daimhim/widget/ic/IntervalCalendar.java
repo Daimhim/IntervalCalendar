@@ -176,7 +176,9 @@ public class IntervalCalendar extends FrameLayout {
                 }
 
                 // 两个日期相差超过限定
-                if (maxInterval > 0 && maxInterval < (int) (Math.abs((itemDay.millis - selectStartTime)) / (1000*3600*24))){
+                if (selectFinishTime < 0
+                        && maxInterval > 0
+                        && maxInterval < (int) (Math.abs((itemDay.millis - selectStartTime)) / (1000*3600*24))){
                     if (onSelectTimeChangeListener != null) {
                         onSelectTimeChangeListener.chooseExceed();
                     }
