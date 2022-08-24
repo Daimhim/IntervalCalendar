@@ -68,11 +68,11 @@ public class IntervalCalendar extends FrameLayout {
      * 初始时数量
      */
     private int initializationNumber = 5;
-    private Lifecycle lifecycle;
     /**
      * 选择区间
      */
     private int maxInterval = -1;
+    private Lifecycle lifecycle;
 
     private LinearLayout ll_weekend_layout;
 
@@ -374,7 +374,7 @@ public class IntervalCalendar extends FrameLayout {
         return intervalCalendarAdapter;
     }
 
-    public void setEveryDayFactory(IntervalCalendarAdapter.EveryDayFactory everyDayFactory) {
+    public <VH extends IntervalCalendarAdapter.EveryDayViewHolder> void setEveryDayFactory(IntervalCalendarAdapter.EveryDayFactory<VH> everyDayFactory) {
         intervalCalendarAdapter.setEveryDayFactory(everyDayFactory);
     }
 
